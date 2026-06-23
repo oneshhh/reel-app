@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Reel Processor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d0d0f;
+    --surface:  #16161a;
+    --border:   #252529;
+    --accent:   #6c63ff;
+    --accent2:  #a78bfa;
+    --success:  #34d399;
+    --warn:     #fbbf24;
+    --danger:   #f87171;
+    --text:     #e8e8f0;
+    --muted:    #6b6b7e;
+    --mono:     'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 80px;
+  }
+
+  /* ── header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(108,99,255,.12);
+    border: 1px solid rgba(108,99,255,.25);
+    border-radius: 100px;
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 600;
+    letter-spacing: -.02em;
+    color: #fff;
+  }
+  .header p {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+  }
+
+  /* ── card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 620px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── drop zone ── */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(108,99,255,.05);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .drop-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .drop-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .drop-zone.has-file {
+    border-color: var(--success);
+    background: rgba(52,211,153,.05);
+  }
+  .drop-zone.has-file .drop-icon { color: var(--success); }
+
+  /* ── logo status pill ── */
+  .logo-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .logo-status.ok   { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.2); color: var(--success); }
+  .logo-status.none { background: rgba(251,191,36,.08);  border: 1px solid rgba(251,191,36,.2); color: var(--warn); }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* ── btn ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    padding: 12px 24px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 14px; font-size: 15px; }
+  .btn-primary:hover:not(:disabled) { opacity: .88; }
+  .btn-sm { background: var(--border); color: var(--text); font-size: 12px; padding: 8px 14px; }
+  .btn-sm:hover { background: #2e2e35; }
+  .btn-success { background: var(--success); color: #0d0d0f; }
+  .btn-success:hover { opacity: .88; }
+
+  /* ── divider ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── progress section ── */
+  #progress-section { display: none; }
+
+  .overall-bar-wrap {
+    background: var(--border);
+    border-radius: 100px;
+    height: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .overall-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 100px;
+    width: 0%;
+    transition: width .4s ease;
+  }
+  .overall-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* ── log feed ── */
+  .log-feed {
+    background: #0a0a0c;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    max-height: 280px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    scroll-behavior: smooth;
+  }
+  .log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 2px 0;
+    opacity: 0;
+    animation: fadeIn .25s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+  .log-ts   { color: #3d3d4d; flex-shrink: 0; }
+  .log-msg  { color: var(--text); }
+  .log-msg.success { color: var(--success); }
+  .log-msg.fail    { color: var(--danger); }
+  .log-msg.muted   { color: var(--muted); }
+  .log-msg.accent  { color: var(--accent2); }
+
+  /* ── reel item list ── */
+  .reel-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .reel-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #0a0a0c;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    transition: border-color .2s;
+  }
+  .reel-item.downloading { border-color: var(--accent); }
+  .reel-item.watermarking { border-color: var(--warn); }
+  .reel-item.done    { border-color: var(--success); }
+  .reel-item.failed  { border-color: var(--danger); }
+  .reel-status-icon { font-size: 14px; flex-shrink: 0; width: 18px; text-align: center; }
+  .reel-url { color: var(--muted); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .reel-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 100px;
+    flex-shrink: 0;
+  }
+  .badge-dl   { background: rgba(108,99,255,.15); color: var(--accent2); }
+  .badge-wm   { background: rgba(251,191,36,.15);  color: var(--warn); }
+  .badge-done { background: rgba(52,211,153,.15);  color: var(--success); }
+  .badge-fail { background: rgba(248,113,113,.15); color: var(--danger); }
+
+  /* ── spinner ── */
+  .spin {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(108,99,255,.25);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── done banner ── */
+  #done-banner { display: none; }
+  .done-banner-inner {
+    background: rgba(52,211,153,.06);
+    border: 1px solid rgba(52,211,153,.25);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .done-banner-inner h2 { font-size: 20px; color: var(--success); margin-bottom: 6px; }
+  .done-banner-inner p  { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  /* ── toast ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #252529; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 20px; font-size: 13px; color: var(--text);
+    opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err  { border-color: var(--danger); color: var(--danger); }
+
+  @media (max-width: 480px) {
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-badge">⚡ Auto Watermarker</div>
+  <h1>Reel Processor</h1>
+  <p>Upload your links sheet — get back branded videos, ready to post.</p>
+</div>
+
+<!-- ── Logo Card ── -->
+<div class="card" id="logo-card">
+  <div class="card-title">Step 1 — Brand Logo</div>
+
+  <div id="logo-ok" class="logo-status ok" style="display:{% if has_logo %} flex{% else %} none{% endif %}">
+    <span class="logo-dot"></span>
+    <span>Logo is set &amp; ready to use</span>
+    <button class="btn btn-sm" style="margin-left:auto" onclick="document.getElementById('logo-input').click()">Replace</button>
+  </div>
+  <div id="logo-none" class="logo-status none" style="display:{% if not has_logo %} flex{% else %} none{% endif %}">
+    <span class="logo-dot"></span>
+    <span>No logo uploaded yet</span>
+  </div>
+
+  <div class="drop-zone" id="logo-drop" {% if has_logo %}style="display:none"{% endif %}>
+    <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp" onchange="handleLogoFile(this.files[0])"/>
+    <span class="drop-icon">🖼️</span>
+    <div class="drop-label">Drop your logo here or click to browse</div>
+    <div class="drop-sub">PNG with transparency recommended · max 10 MB</div>
+  </div>
+</div>
+
+<!-- ── Upload Card ── -->
+<div class="card">
+  <div class="card-title">Step 2 — Upload Links Sheet</div>
+
+  <div class="drop-zone" id="excel-drop">
+    <input type="file" id="excel-input" accept=".xlsx,.xls"
+           onchange="handleExcelFile(this.files[0])"/>
+    <span class="drop-icon" id="excel-icon">📊</span>
+    <div class="drop-label" id="excel-label">Drop your Excel file here or click to browse</div>
+    <div class="drop-sub" id="excel-sub">Column A (or any column labelled "url") · .xlsx or .xls</div>
+  </div>
+
+  <hr class="divider"/>
+
+  <button class="btn btn-primary" id="run-btn" onclick="startJob()" disabled>
+    <span class="spin" id="run-spin" style="display:none"></span>
+    <span id="run-label">Process Reels</span>
+  </button>
+</div>
+
+<!-- ── Progress Card ── -->
+<div class="card" id="progress-section">
+  <div class="card-title" id="progress-title">Processing…</div>
+
+  <div class="overall-bar-wrap">
+    <div class="overall-bar" id="overall-bar"></div>
+  </div>
+  <div class="overall-label">
+    <span id="progress-text">Starting…</span>
+    <span id="progress-pct">0%</span>
+  </div>
+
+  <div class="log-feed" id="log-feed"></div>
+  <div class="reel-list" id="reel-list"></div>
+</div>
+
+<!-- ── Done Banner ── -->
+<div class="card" id="done-banner">
+  <div class="done-banner-inner">
+    <h2>✔ All done!</h2>
+    <p id="done-summary">Videos processed and ready to download.</p>
+    <a id="download-link" href="#" class="btn btn-success" style="display:inline-flex;text-decoration:none;margin:0 auto">
+      ⬇ Download ZIP
+    </a>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+let excelFile = null;
+const reelItems = {};
+
+// ── drag & drop ───────────────────────────────────────────────────────────────
+['logo-drop','excel-drop'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+  el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (id === 'logo-drop') handleLogoFile(file);
+    else handleExcelFile(file);
+  });
+});
+
+// ── logo ─────────────────────────────────────────────────────────────────────
+async function handleLogoFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Logo must be an image file.', true); return; }
+  const fd = new FormData();
+  fd.append('logo', file);
+  const res = await fetch('/upload-logo', { method: 'POST', body: fd });
+  const d   = await res.json();
+  if (d.ok) {
+    document.getElementById('logo-ok').style.display   = 'flex';
+    document.getElementById('logo-none').style.display = 'none';
+    document.getElementById('logo-drop').style.display = 'none';
+    toast('Logo saved ✔');
+    checkRunnable();
+  } else {
+    toast(d.error || 'Upload failed', true);
+  }
+}
+
+// ── excel ─────────────────────────────────────────────────────────────────────
+function handleExcelFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.(xlsx|xls)$/i)) { toast('Please upload an Excel file (.xlsx)', true); return; }
+  excelFile = file;
+  const drop = document.getElementById('excel-drop');
+  drop.classList.add('has-file');
+  document.getElementById('excel-icon').textContent  = '✅';
+  document.getElementById('excel-label').textContent = file.name;
+  document.getElementById('excel-sub').textContent   = (file.size / 1024).toFixed(1) + ' KB';
+  checkRunnable();
+}
+
+async function checkRunnable() {
+  const res      = await fetch('/logo-status');
+  const { has_logo } = await res.json();
+  document.getElementById('run-btn').disabled = !(has_logo && excelFile);
+}
+checkRunnable();
+
+// ── job ───────────────────────────────────────────────────────────────────────
+async function startJob() {
+  if (!excelFile) { toast('Please select an Excel file first.', true); return; }
+
+  const btn  = document.getElementById('run-btn');
+  btn.disabled = true;
+  document.getElementById('run-spin').style.display  = 'inline-block';
+  document.getElementById('run-label').textContent   = 'Starting…';
+
+  const fd = new FormData();
+  fd.append('excel', excelFile);
+  const res  = await fetch('/start', { method: 'POST', body: fd });
+  const data = await res.json();
+
+  if (data.error) {
+    toast(data.error, true);
+    btn.disabled = false;
+    document.getElementById('run-spin').style.display = 'none';
+    document.getElementById('run-label').textContent  = 'Process Reels';
+    return;
+  }
+
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('progress-section').scrollIntoView({ behavior: 'smooth' });
+  listenToJob(data.job_id);
+}
+
+function listenToJob(jobId) {
+  const es = new EventSource(`/stream/${jobId}`);
+
+  es.addEventListener('start', e => {
+    const { total } = JSON.parse(e.data);
+    log(`Job started — ${total} reel${total!==1?'s':''} to process`, 'accent');
+    document.getElementById('run-label').textContent = `Processing ${total} reel${total!==1?'s':''}…`;
+  });
+
+  es.addEventListener('progress', e => {
+    const d = JSON.parse(e.data);
+    updateReel(d);
+    const pct = Math.round((d.index / d.total) * 100);
+    setProgress(d.index, d.total, pct, d.message);
+
+    const cls = d.status === 'done' ? 'success' : d.status === 'failed' ? 'fail' : 'muted';
+    log(d.message, cls);
+  });
+
+  es.addEventListener('done', e => {
+    const { ok, fail, download_url } = JSON.parse(e.data);
+    es.close();
+    setProgress(1, 1, 100, 'Complete');
+    document.getElementById('progress-title').textContent = 'Processing complete';
+    log(`Done — ${ok} succeeded, ${fail} failed`, 'success');
+
+    document.getElementById('run-spin').style.display = 'none';
+    document.getElementById('run-label').textContent  = 'Done!';
+
+    const banner = document.getElementById('done-banner');
+    banner.style.display = 'block';
+    document.getElementById('done-summary').textContent =
+      `${ok} video${ok!==1?'s':''} branded successfully${fail?' · '+fail+' failed':''}.`;
+    document.getElementById('download-link').href = download_url;
+    banner.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  es.addEventListener('error', e => {
+    try {
+      const { message } = JSON.parse(e.data);
+      log('Error: ' + message, 'fail');
+      toast(message, true);
+    } catch {
+      // connection closed after done — ignore
+    }
+    es.close();
+    document.getElementById('run-spin').style.display = 'none';
+    document.getElementById('run-label').textContent  = 'Process Reels';
+    document.getElementById('run-btn').disabled = false;
+  });
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+function setProgress(done, total, pct, msg) {
+  document.getElementById('overall-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = msg;
+  document.getElementById('progress-pct').textContent  = pct + '%';
+}
+
+function updateReel(d) {
+  const list = document.getElementById('reel-list');
+  let item = reelItems[d.index];
+  if (!item) {
+    item = document.createElement('div');
+    item.className = 'reel-item';
+    item.innerHTML = `
+      <span class="reel-status-icon" id="ri-icon-${d.index}">⏳</span>
+      <span class="reel-url">${d.url}</span>
+      <span class="reel-badge" id="ri-badge-${d.index}"></span>`;
+    list.appendChild(item);
+    reelItems[d.index] = item;
+  }
+  item.className = `reel-item ${d.status}`;
+  const icon  = document.getElementById(`ri-icon-${d.index}`);
+  const badge = document.getElementById(`ri-badge-${d.index}`);
+  const map = {
+    downloading:  ['<span class="spin"></span>', 'Downloading',  'badge-dl'],
+    watermarking: ['⚙️',                         'Adding logo',  'badge-wm'],
+    done:         ['✅',                          'Done',         'badge-done'],
+    failed:       ['❌',                          'Failed',       'badge-fail'],
+  };
+  const [ic, label, cls] = map[d.status] || ['⏳','Pending',''];
+  icon.innerHTML  = ic;
+  badge.textContent = label;
+  badge.className = `reel-badge ${cls}`;
+}
+
+function log(msg, type='') {
+  const feed = document.getElementById('log-feed');
+  const ts   = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const row  = document.createElement('div');
+  row.className = 'log-entry';
+  row.innerHTML = `<span class="log-ts">${ts}</span><span class="log-msg ${type}">${msg}</span>`;
+  feed.appendChild(row);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function toast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (err ? ' err' : '');
+  setTimeout(() => t.className = '', 3000);
+}
+</script>
+</body>
+</html>
