@@ -84,7 +84,7 @@ def watermark(input_path: str, output_path: str, logo: Image.Image,
     x   = str(margin) if corner == 'left' else f'W-overlay_w-{margin}'
     cmd = (f'ffmpeg -y -i "{input_path}" -i "{tmp.name}" '
            f'-filter_complex "overlay={x}:{margin}" '
-           f'-c:v libx264 -crf 20 -preset fast -c:a copy '
+           f'-c:v libx264 -crf 28 -preset ultrafast -tune fastdecode -c:a copy '
            f'"{output_path}" -loglevel error')
     code = os.system(cmd)
     os.unlink(tmp.name)
