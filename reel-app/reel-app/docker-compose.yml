@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  reel-processor:
+    build: .
+    container_name: reel-processor
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # Logo persists across restarts; output videos survive container rebuilds
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
